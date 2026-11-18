@@ -47,8 +47,21 @@ func main() {
 	controllers.Inicializar(almacen, mqttSvc, cfg, authSvc, hub, notifSvc, tgSvc, iaSvc, repSvc)
 
 	// Los eventos MQTT se convierten en WebSocket, notificaciones y auditoría.
+
 	mqttSvc.SetEventos(broker.Eventos{
-		Sensor:        controllers.EventoSensor,
+		Sensor: func(dispositivo string, presente bool, nueva bool) {
+
+			// Mantener el funcionamiento actual de Gestock.
+			controllers.EventoSensor(dispositivo, presente, nueva)
+
+			// Notificar solamente una deteccion nueva.
+			if nueva {
+				tgSvc.EnviarAvisoCaja(
+					"https://anderfonseca29.github.io/Proyecto_micro/recepcion",
+				)
+			}
+		},
+
 		Clasificacion: controllers.EventoClasificacion,
 		Conexion:      controllers.EventoMQTT,
 	})

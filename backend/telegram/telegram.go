@@ -25,10 +25,10 @@ import (
 
 // Errores de vinculación.
 var (
-	ErrNoConfigurado = errors.New("Telegram no está configurado en el servidor")
-	ErrCodigoInvalido = errors.New("código de vinculación inválido o expirado")
-	ErrChatYaVinculado = errors.New("este chat de Telegram ya está vinculado a otra cuenta")
-	ErrNoVinculado    = errors.New("el usuario no tiene Telegram vinculado")
+	ErrNoConfigurado      = errors.New("Telegram no está configurado en el servidor")
+	ErrCodigoInvalido     = errors.New("código de vinculación inválido o expirado")
+	ErrChatYaVinculado    = errors.New("este chat de Telegram ya está vinculado a otra cuenta")
+	ErrNoVinculado        = errors.New("el usuario no tiene Telegram vinculado")
 	ErrDemasiadosIntentos = errors.New("demasiados intentos de vinculación")
 )
 
@@ -41,38 +41,38 @@ type Preferencias struct {
 
 // Vinculacion relaciona una cuenta GESTOCK con un chat de Telegram.
 type Vinculacion struct {
-	UsuarioID   string       `json:"usuario_id"`
-	Rol         auth.Rol     `json:"rol"`
-	ChatID      int64        `json:"chat_id"`
-	ChatNombre  string       `json:"chat_nombre"`
-	UsuarioTG   string       `json:"usuario_telegram,omitempty"`
-	VinculadoEn string       `json:"vinculado_en"`
+	UsuarioID    string       `json:"usuario_id"`
+	Rol          auth.Rol     `json:"rol"`
+	ChatID       int64        `json:"chat_id"`
+	ChatNombre   string       `json:"chat_nombre"`
+	UsuarioTG    string       `json:"usuario_telegram,omitempty"`
+	VinculadoEn  string       `json:"vinculado_en"`
 	Preferencias Preferencias `json:"preferencias"`
 }
 
 // Estado es la vista segura para el perfil del usuario.
 type Estado struct {
-	Configurado   bool            `json:"configurado"`
-	Vinculado     bool            `json:"vinculado"`
-	Chat          string          `json:"chat,omitempty"`
-	UsuarioTG     string          `json:"usuario_telegram,omitempty"`
-	VinculadoEn   string          `json:"vinculado_en,omitempty"`
-	BotUsername   string          `json:"bot_username,omitempty"`
-	Preferencias  Preferencias    `json:"preferencias"`
-	Permitidas    []string        `json:"categorias_permitidas"`
-	GrupoActivo   bool            `json:"grupo_activo"`
-	GrupoChat     string          `json:"grupo_chat,omitempty"`
-	GrupoCategorias []string      `json:"grupo_categorias,omitempty"`
+	Configurado     bool         `json:"configurado"`
+	Vinculado       bool         `json:"vinculado"`
+	Chat            string       `json:"chat,omitempty"`
+	UsuarioTG       string       `json:"usuario_telegram,omitempty"`
+	VinculadoEn     string       `json:"vinculado_en,omitempty"`
+	BotUsername     string       `json:"bot_username,omitempty"`
+	Preferencias    Preferencias `json:"preferencias"`
+	Permitidas      []string     `json:"categorias_permitidas"`
+	GrupoActivo     bool         `json:"grupo_activo"`
+	GrupoChat       string       `json:"grupo_chat,omitempty"`
+	GrupoCategorias []string     `json:"grupo_categorias,omitempty"`
 }
 
 // Entrega registra el resultado de un envío.
 type Entrega struct {
-	ID        int64  `json:"id"`
-	ChatID    string `json:"chat_id"`
-	Etiqueta  string `json:"etiqueta"`
-	Estado    string `json:"estado"` // ENVIADO | ERROR | REINTENTO
-	Detalle   string `json:"detalle,omitempty"`
-	Fecha     string `json:"fecha"`
+	ID       int64  `json:"id"`
+	ChatID   string `json:"chat_id"`
+	Etiqueta string `json:"etiqueta"`
+	Estado   string `json:"estado"` // ENVIADO | ERROR | REINTENTO
+	Detalle  string `json:"detalle,omitempty"`
+	Fecha    string `json:"fecha"`
 }
 
 type codigo struct {
@@ -91,17 +91,17 @@ type trabajo struct {
 
 // Servicio encapsula el bot.
 type Servicio struct {
-	cfg    config.Config
-	mu     sync.RWMutex
-	codigos map[string]*codigo
-	vinculos map[string]*Vinculacion
-	porChat  map[int64]string
-	intentos map[int64][]time.Time
-	cola     chan trabajo
-	cliente  *http.Client
-	entregas []Entrega
-	seqEntrega int64
-	grupoChat string
+	cfg             config.Config
+	mu              sync.RWMutex
+	codigos         map[string]*codigo
+	vinculos        map[string]*Vinculacion
+	porChat         map[int64]string
+	intentos        map[int64][]time.Time
+	cola            chan trabajo
+	cliente         *http.Client
+	entregas        []Entrega
+	seqEntrega      int64
+	grupoChat       string
 	grupoCategorias map[string]bool
 }
 
@@ -113,14 +113,14 @@ func Nuevo(cfg config.Config) *Servicio {
 		notifications.CatSistema: true, notifications.CatSeguridad: true,
 	}
 	return &Servicio{
-		cfg:      cfg,
-		codigos:  make(map[string]*codigo),
-		vinculos: make(map[string]*Vinculacion),
-		porChat:  make(map[int64]string),
-		intentos: make(map[int64][]time.Time),
-		cola:     make(chan trabajo, 200),
-		cliente:  &http.Client{Timeout: 15 * time.Second},
-		grupoChat: cfg.TelegramGroupID,
+		cfg:             cfg,
+		codigos:         make(map[string]*codigo),
+		vinculos:        make(map[string]*Vinculacion),
+		porChat:         make(map[int64]string),
+		intentos:        make(map[int64][]time.Time),
+		cola:            make(chan trabajo, 200),
+		cliente:         &http.Client{Timeout: 15 * time.Second},
+		grupoChat:       cfg.TelegramGroupID,
 		grupoCategorias: cats,
 	}
 }
@@ -135,6 +135,39 @@ func (s *Servicio) Iniciar() {
 // Configurado indica si hay token.
 func (s *Servicio) Configurado() bool {
 	return s.cfg.TelegramEnabled && s.cfg.TelegramBotToken != ""
+}
+
+// EnviarAvisoCaja notifica al chat configurado
+// cuando el ESP32 detecta una caja nueva.
+
+func (s *Servicio) EnviarAvisoCaja(urlRecepcion string) {
+	log.Println("[telegram] Se recibio solicitud de aviso de caja")
+
+	if !s.Configurado() {
+		log.Println("[telegram] ERROR: Telegram no configurado")
+		return
+	}
+
+	chatID := parseChatID(s.cfg.TelegramGroupID)
+
+	if chatID == 0 {
+		log.Println("[telegram] ERROR: Chat ID invalido o vacio")
+		return
+	}
+
+	mensaje := "📦 GESTOCK - Nueva caja detectada!\n\n" +
+		"Una caja acaba de llegar a recepcion.\n\n" +
+		"Estado: Pendiente de escaneo.\n\n" +
+		"Abre Gestock, escanea el producto y confirma su registro.\n\n" +
+		"Abrir Gestock:\n" + urlRecepcion
+
+	s.encolar(trabajo{
+		chatID:   chatID,
+		texto:    mensaje,
+		etiqueta: "Nueva caja detectada",
+	})
+
+	log.Println("[telegram] Aviso agregado a la cola")
 }
 
 // EnviarNotificacion distribuye un evento a los chats vinculados.
@@ -470,6 +503,7 @@ func (s *Servicio) encolar(t trabajo) {
 func (s *Servicio) worker() {
 	for t := range s.cola {
 		err := s.enviarDirecto(t.chatID, t.texto)
+		log.Printf("[telegram] Resultado del envio: %v", err)
 		if err == nil {
 			s.registrarEntrega(t, "ENVIADO", "")
 			continue
