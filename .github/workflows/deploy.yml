@@ -2,8 +2,8 @@ name: Desplegar Frontend en GitHub Pages
 
 on:
   push:
-    branches: [ main ]  # O la rama por defecto que utilices
-
+    branches: [main]
+  workflow_dispatch:
 # Permitir lectura y escritura para que GitHub Actions pueda publicar en gh-pages
 permissions:
   contents: write
