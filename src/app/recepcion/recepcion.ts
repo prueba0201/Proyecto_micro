@@ -71,6 +71,55 @@ export class Recepcion implements AfterViewInit, OnDestroy {
   // ---------- estado de la recepción ----------
   readonly ultimo = signal<ResultadoRecepcion | null>(null);
   readonly entradaManual = signal('');
+
+  readonly codigoPendiente = signal<string | null>(null);
+
+  readonly productoSeleccionado = computed(() => {
+    const codigo = this.codigoPendiente();
+    if (!codigo) return null;
+
+    return this.serv.productos().find(
+      p => p.codigo.toUpperCase() === codigo.toUpperCase()
+    ) ?? null;
+  });
+
+  // Secciones temporales de demostración
+  readonly secciones: Record<string, 1 | 2 | 3> = {
+    'PROD-1234': 1,
+    'PROD-1235': 1,
+    'PROD-1236': 2,
+    'PROD-1237': 2,
+    'PROD-1238': 3
+  };
+
+  seccionProducto(codigo: string): 1 | 2 | 3 | null {
+    return this.secciones[codigo.toUpperCase()] ?? null;
+  }
+
+  prepararProducto(codigo: string): void {
+    const limpio = codigo.trim().toUpperCase();
+    if (!limpio) return;
+
+    this.codigoPendiente.set(limpio);
+    this.pausado.set(true);
+  }
+
+  confirmarProducto(): void {
+    const producto = this.productoSeleccionado();
+    if (!producto || this.procesando()) return;
+
+    if (this.seccionProducto(producto.codigo) === null) {
+      this.toast.aviso(
+        'Sin sección',
+        'Asigna una sección antes de registrar.'
+      );
+      return;
+    }
+
+    this.codigoPendiente.set(null);
+    void this.procesar(producto.codigo, 'manual');
+  }
+
   readonly escaneosSesion = signal(0);
   readonly procesando = signal(false);
   /** La lectura se pausa tras detectar un código hasta pulsar "Nueva lectura". */
@@ -87,6 +136,7 @@ export class Recepcion implements AfterViewInit, OnDestroy {
 
   /** Códigos de prueba para probar sin códigos de barras reales. */
   readonly demo = computed(() => this.serv.productos().slice(0, 5));
+
 
   /** Últimos 30 ingresos para el historial. */
   readonly recientes = computed(() => this.serv.recepciones().slice(0, 30));
@@ -258,7 +308,7 @@ export class Recepcion implements AfterViewInit, OnDestroy {
     }
     this.ultimoCodigo = codigo;
     this.ultimoTs = ahora;
-    void this.procesar(codigo, 'camara');
+    this.prepararProducto(codigo);
   }
 
   /** Valida, registra el ingreso y avisa a la maqueta. */
@@ -300,13 +350,12 @@ export class Recepcion implements AfterViewInit, OnDestroy {
       this.toast.info('Escribe un código', 'Introduce un código de barras o QR.');
       return;
     }
-    this.entradaManual.set('');
-    void this.procesar(codigo, 'manual');
+    this.prepararProducto(codigo);
   }
 
   /** Prueba rápida con un código del catálogo de demo. */
   probarDemo(codigo: string): void {
-    void this.procesar(codigo, 'manual');
+    this.prepararProducto(codigo);
   }
 
   /** Reanuda la lectura tras una detección (nueva lectura). */
@@ -470,3 +519,5 @@ export class Recepcion implements AfterViewInit, OnDestroy {
     }
   }
 }
+
+

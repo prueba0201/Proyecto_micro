@@ -145,7 +145,6 @@
       </div>
     </article>
   </section>
-
   <!-- ===================== Cuerpo principal ===================== -->
   <div class="rp-grid">
     <!-- Columna izquierda -->
@@ -306,6 +305,50 @@
             }
           </div>
         </div>
+
+        <!-- Vista previa del producto escaneado -->
+        @if (codigoPendiente()) {
+          <div class="rp-vista-producto">
+
+            @if (productoSeleccionado(); as producto) {
+              <h3>Producto encontrado</h3>
+
+              <p><strong>Nombre:</strong> {{ producto.nombre }}</p>
+              <p><strong>Código:</strong> {{ producto.codigo }}</p>
+              <p><strong>Stock:</strong> {{ producto.stock }}</p>
+
+              @if (seccionProducto(producto.codigo); as seccion) {
+                <div class="rp-destino">
+                  <span>DESTINO ASIGNADO</span>
+                  <strong>SECCIÓN {{ seccion }}</strong>
+                </div>
+
+                <button
+                  type="button"
+                  class="btn btn-primary"
+                  [disabled]="procesando()"
+                  (click)="confirmarProducto()"
+                >
+                  Confirmar registro
+                </button>
+              } @else {
+                <p>Este producto no tiene sección asignada.</p>
+              }
+
+            } @else {
+              <p>Producto no encontrado: {{ codigoPendiente() }}</p>
+            }
+
+            <button
+              type="button"
+              class="btn"
+              (click)="codigoPendiente.set(null); nuevaLectura()"
+            >
+              Cancelar
+            </button>
+          </div>
+        }
+
       </section>
 
       <!-- ============ G. Controles ============ -->
@@ -439,6 +482,18 @@
               <dt>Cantidad recibida</dt>
               <dd class="mono">{{ u.cantidad }}</dd>
             </div>
+
+            <div class="rp-dato">
+              <dt>Sección asignada</dt>
+              <dd>
+                @if (seccionProducto(u.codigo); as seccion) {
+                  <strong>SECCIÓN {{ seccion }}</strong>
+                } @else {
+                  <span>Sin sección asignada</span>
+                }
+              </dd>
+            </div>
+
             <div class="rp-dato">
               <dt>Resultado</dt>
               <dd>

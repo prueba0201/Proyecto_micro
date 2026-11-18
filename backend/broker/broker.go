@@ -110,33 +110,73 @@ func (b *Broker) Simulando() bool {
 }
 
 // PublicarClasificacion envía la orden de clasificación al ESP32.
-func (b *Broker) PublicarClasificacion(rec store.Recepcion) error {
-	payload, err := json.Marshal(map[string]any{
-		"registro":        "exitoso",
-		"codigo_producto": rec.CodigoProducto,
-		"accion":          "clasificar",
-		"id_operacion":    rec.IDOperacion,
-	})
-	if err != nil {
-		return err
-	}
-	if !b.Conectado() {
-		return fmt.Errorf("broker MQTT no disponible")
-	}
-	b.mu.Lock()
-	cliente := b.cliente
-	b.mu.Unlock()
 
-	tok := cliente.Publish(b.cfg.TopicClasificador, 1, false, payload)
-	if !tok.WaitTimeout(5 * time.Second) {
-		return fmt.Errorf("tiempo de espera agotado al publicar")
-	}
-	if err := tok.Error(); err != nil {
-		return err
-	}
-	log.Printf("[mqtt] orden publicada en %s (op %s)", b.cfg.TopicClasificador, rec.IDOperacion)
-	return nil
+func (b *Broker) PublicarClasificacion(rec store.Recepcion) error {
+
+    // Secciones asignadas a los productos de prueba
+    secciones := map[string]int{
+        "PROD-1234": 1,
+        "PROD-1235": 1,
+        "PROD-1236": 2,
+        "PROD-1237": 2,
+        "PROD-1238": 3,
+    }
+
+    seccion, existe := secciones[rec.CodigoProducto]
+
+    if !existe {
+        return fmt.Errorf(
+            "producto %s sin seccion asignada",
+            rec.CodigoProducto,
+        )
+    }
+
+    // Crear mensaje MQTT con destino
+    payload, err := json.Marshal(map[string]any{
+        "registro":        "exitoso",
+        "codigo_producto": rec.CodigoProducto,
+        "accion":          "clasificar",
+        "seccion":         seccion,
+        "id_operacion":    rec.IDOperacion,
+    })
+
+    if err != nil {
+        return err
+    }
+
+    if !b.Conectado() {
+        return fmt.Errorf("broker MQTT no disponible")
+    }
+
+    b.mu.Lock()
+    cliente := b.cliente
+    b.mu.Unlock()
+
+    tok := cliente.Publish(
+        b.cfg.TopicClasificador,
+        1,
+        false,
+        payload,
+    )
+
+    if !tok.WaitTimeout(5 * time.Second) {
+        return fmt.Errorf("tiempo de espera agotado al publicar")
+    }
+
+    if err := tok.Error(); err != nil {
+        return err
+    }
+
+    log.Printf(
+        "[mqtt] producto %s enviado a seccion %d (op %s)",
+        rec.CodigoProducto,
+        seccion,
+        rec.IDOperacion,
+    )
+
+    return nil
 }
+
 
 // --- manejadores de mensajes entrantes ---
 
